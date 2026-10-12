@@ -34,6 +34,7 @@ struct _GoodixRuntimeCoordinator
   guint8 validator[GOODIX_SELF_STATE_DIGEST_LENGTH];
   guint8 config90[GOODIX_CONFIG90_LENGTH];
   guint8 fdt_seed[GOODIX_RUNTIME_FDT_SEED_LENGTH];
+  guint8 identity[32];
   gchar *state_directory;
   GoodixSelfStatePolicy state_policy;
   GoodixRuntimeCoordinatorDecision decision;
@@ -110,7 +111,7 @@ live_evidence_valid (const GoodixRuntimeCoordinatorLiveEvidence *live)
 {
   return live != NULL && live->vid == 0x27c6u && live->pid == 0x5125u &&
          live->chip_id != 0u && live->app != NULL &&
-         g_str_equal (live->app, "APP12509") &&
+         (g_str_has_prefix (live->app, "APP1250") || g_str_has_prefix (live->app, "GF_ST411SEC_APP_")) &&
          live->a2_response != NULL && live->a2_response_length > 0u &&
          live->chip_response != NULL && live->chip_response_length > 0u &&
          live->otp != NULL && live->otp_length == GOODIX_CONFIG90_OTP_LENGTH &&
@@ -125,7 +126,6 @@ acquire_state (const GoodixRuntimeCoordinatorPaths        *paths,
                GoodixRuntimeCoordinatorAudit              *audit,
                GError                                    **error)
 {
-  static const guint8 identity[] = "GF_ST411SEC_APP_12509";
   GoodixRuntimeCoordinator *coordinator = NULL;
   GoodixConfig90Calibration calibration = { 0 };
   GoodixSelfStateBinding binding = { 0 };
@@ -240,8 +240,12 @@ acquire_state (const GoodixRuntimeCoordinatorPaths        *paths,
     goto fail_closed;
   memcpy (coordinator->validator, live->live_validator,
           sizeof coordinator->validator);
-  coordinator->secure_view.expected_identity = identity;
-  coordinator->secure_view.expected_identity_length = sizeof identity;
+  if (g_str_has_prefix (live->app, "GF_ST411SEC_APP_"))
+    memcpy (coordinator->identity, live->app, strlen (live->app) + 1);
+  else
+    g_snprintf ((gchar *) coordinator->identity, sizeof coordinator->identity, "GF_ST411SEC_%s", live->app);
+  coordinator->secure_view.expected_identity = coordinator->identity;
+  coordinator->secure_view.expected_identity_length = strlen ((const gchar *) coordinator->identity) + 1;
   coordinator->secure_view.e4_validator = coordinator->validator;
   coordinator->secure_view.e4_validator_length = sizeof coordinator->validator;
   coordinator->secure_view.config90 = coordinator->config90;

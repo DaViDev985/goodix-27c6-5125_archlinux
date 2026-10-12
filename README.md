@@ -1,20 +1,20 @@
 <!-- SPDX-License-Identifier: GPL-2.0-or-later -->
-# Goodix 27c6:5125 for Fedora KDE
+# Goodix 27c6:5125 for Arch Linux KDE
 
 Fingerprint driver for the Goodix USB reader `27c6:5125` running
-`GF_ST411SEC_APP_12509`. It connects a Goodix-enabled libfprint library to Fedora's
-fprintd service and desktop authentication, initializing the reader by itself on
+`GF_ST411SEC_APP_12509` or `GF_ST411SEC_APP_12508`. It connects a Goodix-enabled libfprint library to the
+system's fprintd service and desktop authentication, initializing the reader by itself on
 first use while preserving factory firmware and factory data.
 
 ## Supported configuration
 
-- Fedora 44 KDE, x86_64, with local user accounts.
-- Goodix USB `27c6:5125`, firmware `GF_ST411SEC_APP_12509`.
-- Fedora-provided fprintd, PAM, Plasma Login, KScreenLocker, sudo and PolicyKit.
+- Arch Linux, x86_64, with local user accounts.
+- Goodix USB `27c6:5125`, firmware `GF_ST411SEC_APP_12509` and `GF_ST411SEC_APP_12508` (Huawei MateBook / Honor MagicBook).
+- Arch-provided fprintd, PAM, Plasma Login (`plasmalogin`), KScreenLocker, sudo and PolicyKit.
 
-Within the supported Fedora 44 KDE scope, the project integrates enrollment,
+Within the supported Arch Linux KDE scope, the project integrates enrollment,
 verification, screen unlocking, ordinary sudo, PolicyKit, Plasma fingerprint
-login and password fallback through Fedora's existing authentication stack.
+login and password fallback through Linux's existing authentication stack.
 Qualification is limited to the documented target and one reader; see
 [validation and limitations](docs/VALIDATION.md).
 
@@ -23,16 +23,25 @@ Qualification is limited to the documented target and one reader; see
 > [!WARNING]
 > **Use only official releases or the `main` branch for installation.**
 
-**[Install using the single copy-paste block](docs/INSTALLATION.md).** The root
-`install.sh` automatically selects first installation (`FIRST_INSTALL`) or update
-(`UPDATE`), builds the runtime from this source tree, and installs the login
-integration and removal commands. It requests normal sudo authentication when
-needed.
+### 1. Install prerequisites
 
-You need an administrative access. Git must be
-available to run the bootstrap block.
+```bash
+sudo pacman -S fprintd libfprint opencv meson ninja gcc pkgconf pam
+```
 
-After a successful installation, the repository clone may be removed.
+### 2. Build and install
+
+```bash
+sudo ./install-arch.sh
+```
+
+The installer builds the runtime from source (using `meson` and `ninja`), places the Goodix-enabled library in `/usr/local/lib/goodix-27c6-5125/`, sets up the root-only pairing state directory `/var/lib/fprint/goodix-5125-state-v2/`, and installs a systemd drop-in override for `fprintd.service`.
+
+### 3. (Optional) Enable Plasma Login Manager fingerprint auth
+
+```bash
+sudo ./enable-plasmalogin-fingerprint.sh
+```
 
 ## Using fingerprint authentication
 
@@ -49,11 +58,12 @@ a password-encrypted KWallet.
 
 ## Uninstall and emergency recovery
 
-Run **`goodix-uninstall`** from a working desktop terminal. If graphical login
-is unavailable, follow the [text-console emergency instructions](docs/UNINSTALL.md)
-and run **`goodix-force-remove`**. Both commands request their own sudo
-authentication, preserve host pairing state and templates, and work after
-the clone is removed.
+Run **`sudo ./uninstall-arch.sh`** from a terminal to remove the private library and systemd drop-in override, cleanly restoring the stock `fprintd` configuration while preserving host pairing state and enrolled templates.
+
+To disable the optional Plasma Login Manager PAM integration at any time:
+```bash
+sudo ./disable-plasmalogin-fingerprint.sh
+```
 
 ## Learn how it works
 

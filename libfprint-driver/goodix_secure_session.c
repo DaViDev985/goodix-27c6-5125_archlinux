@@ -270,9 +270,8 @@ validate_material (const GoodixSecureSessionMaterial *material,
                    GError                           **error)
 {
   if (material == NULL || material->expected_identity == NULL ||
-      material->expected_identity_length != sizeof app12509_identity ||
-      memcmp (material->expected_identity, app12509_identity,
-              sizeof app12509_identity) != 0)
+      material->expected_identity_length < 16 ||
+      memcmp (material->expected_identity, "GF_ST411SEC_APP_", 16) != 0)
     goto invalid_identity;
   if (material->e4_validator == NULL || material->e4_validator_length != 32 ||
       !digest_present (material->e4_validator_sha256) ||
@@ -989,8 +988,9 @@ validate_typed (GoodixSecureSession *session,
              digest_matches (body, body_length,
                              session->material.a2_response_sha256);
     case GOODIX_SECURE_PHASE_A8:
-      return body_length == sizeof app12509_identity &&
-             memcmp (body, app12509_identity, body_length) == 0;
+      return session->material.expected_identity != NULL &&
+             body_length == session->material.expected_identity_length &&
+             memcmp (body, session->material.expected_identity, body_length) == 0;
     case GOODIX_SECURE_PHASE_E4:
       {
         GoodixE4ContractResult result =

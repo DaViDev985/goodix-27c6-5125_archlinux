@@ -43,6 +43,7 @@ struct _GoodixPairingActivation
   GoodixPairingProvision *provision;
   GoodixPairingActivationAudit *audit;
   GoodixSecureSessionMaterial secure_view;
+  guint8 identity[32];
   guint8 psk[GOODIX_SELF_STATE_PSK_LENGTH];
   guint8 envelope[GOODIX_PAIRING_ENVELOPE_LENGTH];
   guint8 validator[GOODIX_PAIRING_VALIDATOR_LENGTH];
@@ -120,7 +121,10 @@ prepare_secure_view (GoodixPairingActivation        *activation,
                      const GoodixLivePreflightEvidence *evidence,
                      GError                        **error)
 {
-  static const guint8 identity[] = "GF_ST411SEC_APP_12509";
+  if (evidence->app[0] != '\0')
+    memcpy (activation->identity, evidence->app, sizeof activation->identity);
+  else
+    memcpy (activation->identity, "GF_ST411SEC_APP_12509", 22);
 
   memcpy (activation->config90, evidence->config90,
           sizeof activation->config90);
@@ -129,8 +133,8 @@ prepare_secure_view (GoodixPairingActivation        *activation,
   memcpy (activation->chip_response, evidence->chip_response,
           sizeof activation->chip_response);
   memcpy (activation->otp, evidence->otp, sizeof activation->otp);
-  activation->secure_view.expected_identity = identity;
-  activation->secure_view.expected_identity_length = sizeof identity;
+  activation->secure_view.expected_identity = activation->identity;
+  activation->secure_view.expected_identity_length = strlen ((const gchar *) activation->identity) + 1;
   activation->secure_view.e4_validator = activation->validator;
   activation->secure_view.e4_validator_length = sizeof activation->validator;
   activation->secure_view.config90 = activation->config90;
@@ -207,7 +211,10 @@ activation_new_internal (const GoodixPairingActivationPaths  *paths,
   binding.vid = 0x27c6u;
   binding.pid = 0x5125u;
   binding.chip_profile = evidence->chip_id;
-  g_strlcpy (binding.app, "APP12509", sizeof binding.app);
+  if (evidence->app[0] != '\0')
+    g_strlcpy (binding.app, (const gchar *) evidence->app, sizeof binding.app);
+  else
+    g_strlcpy (binding.app, "APP12509", sizeof binding.app);
   load_result = goodix_self_state_load (paths->state_directory, &binding,
                                         &policy->state, &loaded, error);
   if (audit != NULL)

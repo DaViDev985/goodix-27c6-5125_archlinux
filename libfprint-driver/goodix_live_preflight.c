@@ -236,13 +236,21 @@ accept_typed (GoodixLivePreflight *preflight,
   switch (preflight->phase)
     {
     case GOODIX_LIVE_PREFLIGHT_REENTRY_A2:
+      g_warning ("GOODIX DEBUG: REENTRY_A2 body_len=%" G_GSIZE_FORMAT " (expected %" G_GSIZE_FORMAT ") body[0]=0x%02x body[1]=0x%02x body[2]=0x%02x",
+                 body_length, sizeof preflight->evidence.a2_response,
+                 body_length > 0 ? body[0] : 0, body_length > 1 ? body[1] : 0, body_length > 2 ? body[2] : 0);
       if (body_length != sizeof preflight->evidence.a2_response)
         return FALSE;
       memcpy (preflight->evidence.a2_response, body, body_length);
       return TRUE;
     case GOODIX_LIVE_PREFLIGHT_APP_A8:
-      if (body_length != sizeof app || memcmp (body, app, sizeof app) != 0)
+      g_warning ("GOODIX DEBUG: APP_A8 body_len=%" G_GSIZE_FORMAT " body='%.*s'",
+                 body_length, (int) body_length, (const char *) body);
+      if (body_length < 16 || body_length >= sizeof preflight->evidence.app ||
+          memcmp (body, "GF_ST411SEC_APP_", 16) != 0)
         return FALSE;
+      memcpy (preflight->evidence.app, body, body_length);
+      preflight->evidence.app_length = body_length;
       if (preflight->audit != NULL)
         preflight->audit->exact_app = TRUE;
       return TRUE;
@@ -323,7 +331,12 @@ goodix_live_preflight_handle_a0 (GoodixLivePreflight *preflight,
     {
       if (preflight->ack_seen || body_length != 2u || body[0] != expected ||
           (body[1] != 0x01u && body[1] != 0x07u))
-        goto invalid;
+        {
+          g_warning ("GOODIX DEBUG: B0 ACK failed: phase=%d expected=0x%02x ack_seen=%d body_len=%" G_GSIZE_FORMAT " body[0]=0x%02x body[1]=0x%02x",
+                     preflight->phase, expected, preflight->ack_seen, body_length,
+                     body_length > 0 ? body[0] : 0, body_length > 1 ? body[1] : 0);
+          goto invalid;
+        }
       preflight->ack_seen = TRUE;
       if (preflight->audit != NULL)
         preflight->audit->ack_count++;
@@ -332,7 +345,11 @@ goodix_live_preflight_handle_a0 (GoodixLivePreflight *preflight,
     }
   if (!preflight->ack_seen || message.control != expected ||
       !accept_typed (preflight, body, body_length))
-    goto invalid;
+    {
+      g_warning ("GOODIX DEBUG: typed failed: phase=%d control=0x%02x expected=0x%02x ack_seen=%d body_len=%" G_GSIZE_FORMAT,
+                 preflight->phase, message.control, expected, preflight->ack_seen, body_length);
+      goto invalid;
+    }
   preflight->logical_done = TRUE;
   if (preflight->audit != NULL)
     preflight->audit->typed_response_count++;

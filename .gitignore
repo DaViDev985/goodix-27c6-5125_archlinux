@@ -9,6 +9,11 @@ __pycache__/
 *.tmp
 *~
 
+# Build artifacts and test binaries
+/test_device
+/test_build/
+/build/
+
 # Protected user-supplied material must remain outside this repository.
 /development/
 
