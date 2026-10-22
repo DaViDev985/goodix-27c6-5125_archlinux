@@ -205,7 +205,11 @@ if 'goodix_27c6_5125' in drivers
     # an error for the Goodix C++ driver sources.
     drivers_cppflags += cpp.get_supported_arguments(['-Wno-error=array-bounds'])
     libfprint_goodix_cflags += '-DGOODIX_LIBFPRINT_SIGFM'
-    goodix_sigfm_deps += dependency('opencv4', required: true)
+    opencv_dep = dependency('opencv5', required: false)
+    if not opencv_dep.found()
+        opencv_dep = dependency('opencv4', required: true)
+    endif
+    goodix_sigfm_deps += opencv_dep
     goodix_sigfm_deps += declare_dependency(include_directories: [
         include_directories('../../../../libfprint-driver'),
         include_directories('../../../../Rockytkg/libfprint/libfprint/sigfm'),
